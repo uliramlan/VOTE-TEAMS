@@ -95,11 +95,13 @@ app.get('/reset', (req, res) => {
     }
 
     votes = { red: 0, blue: 0 };
-    streamVoters.clear(); // Clears server memory lock so everyone can vote again
+    streamVoters.clear(); // Clears all tracked voter tokens on the server
     saveVotes(votes);
+    
     io.emit('updateVotes', votes);
+    io.emit('sessionReset'); // Tells all open browsers to wipe their local vote locks
 
-    res.send('Success! Votes have been reset to 0 and stream voters unlocked.');
+    res.send('Success! Votes have been reset to 0 and all voters unlocked.');
 });
 
 io.on('connection', (socket) => {
