@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Team Vote: GM vs OMPED</title>
+    <title>Stream Viewer Vote: GM vs OMPED</title>
     <style>
         body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; background-color: #111; }
         .split-container { display: flex; height: 100vh; width: 100vw; flex-direction: row; transition: opacity 0.3s; }
@@ -14,7 +14,6 @@
         .team-gm { background-color: #1a1a2e; }
         .team-omped { background-color: #f1faee; }
         
-        /* Overlay banner when voting is closed */
         #status-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.85); color: white; display: flex;
@@ -28,7 +27,7 @@
 <body>
 
     <div id="status-overlay">
-        <div id="status-message"> </div>
+        <div id="status-message">Waiting for host to open stream voting...</div>
         <div id="timer-text"></div>
     </div>
 
@@ -50,7 +49,7 @@
         
         let countdownInterval = null;
 
-        socket.on('timerStatus', (data) => {
+        socket.on('streamTimerStatus', (data) => {
             clearInterval(countdownInterval);
 
             if (data.active) {
@@ -58,7 +57,7 @@
                 startCountdown(data.endTime);
             } else {
                 overlay.classList.remove('hidden');
-                statusMessage.textContent = "Voting is currently closed.";
+                statusMessage.textContent = "Stream voting is currently closed.";
                 timerText.textContent = "";
             }
         });
@@ -67,9 +66,13 @@
             alert(msg);
         });
 
+        socket.on('voteSuccess', (msg) => {
+            alert(msg);
+            // Optional: lock screen after voting once if desired
+        });
+
         function castVote(teamKey) {
-            socket.emit('castVote', teamKey);
-            alert("Vote submitted successfully!");
+            socket.emit('castStreamVote', teamKey);
         }
 
         function startCountdown(endTime) {
@@ -79,7 +82,7 @@
                 if (remaining <= 0) {
                     clearInterval(countdownInterval);
                     overlay.classList.remove('hidden');
-                    statusMessage.textContent = "Voting has ended!";
+                    statusMessage.textContent = "Stream voting has ended!";
                     timerText.textContent = "";
                     return;
                 }
