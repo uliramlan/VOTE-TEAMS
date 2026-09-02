@@ -4,41 +4,38 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>vMix Clean Bars</title>
-    <!-- Same CSS as before -->
     <style>
         body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; background: transparent; overflow: hidden; user-select: none; }
         .chart-container { display: flex; justify-content: space-evenly; align-items: flex-end; width: 100vw; height: 100vh; box-sizing: border-box; padding: 0 100px; }
         .team-col { display: flex; align-items: flex-end; height: 100%; width: 30vw; }
         .bar { width: 100%; border-radius: 20px 20px 0 0; transition: height 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .bar-gm { background: linear-gradient(180deg, #ffc107 0%, #ff8f00 100%); box-shadow: 0 0 25px rgba(255, 193, 7, 0.5); height: 0%; }
-        .bar-omped { background: linear-gradient(180deg, #4dd0e1 0%, #00838f 100%); box-shadow: 0 0 25px rgba(77, 208, 225, 0.5); height: 0%; }
+        .bar-red { background: linear-gradient(180deg, #ffc107 0%, #ff8f00 100%); box-shadow: 0 0 25px rgba(255, 193, 7, 0.5); height: 0%; }
+        .bar-blue { background: linear-gradient(180deg, #4dd0e1 0%, #00838f 100%); box-shadow: 0 0 25px rgba(77, 208, 225, 0.5); height: 0%; }
     </style>
 </head>
 <body>
     <div class="chart-container">
-        <div class="team-col"><div class="bar bar-gm" id="bar-gm"></div></div>
-        <div class="team-col"><div class="bar bar-omped" id="bar-omped"></div></div>
+        <div class="team-col"><div class="bar bar-red" id="bar-red"></div></div>
+        <div class="team-col"><div class="bar bar-blue" id="bar-blue"></div></div>
     </div>
 
-    <!-- Import Socket.IO -->
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
 
-        // Listen for updates from the server
         socket.on('updateVotes', (votes) => {
-            let gmVotes = votes.red;
-            let ompedVotes = votes.blue;
-            let totalVotes = gmVotes + ompedVotes;
+            let redVotes = votes.red || 0;
+            let blueVotes = votes.blue || 0;
+            let totalVotes = redVotes + blueVotes;
 
-            let gmPercentage = totalVotes === 0 ? 0 : (gmVotes / totalVotes) * 95;
-            let ompedPercentage = totalVotes === 0 ? 0 : (ompedVotes / totalVotes) * 95;
+            let redPercentage = totalVotes === 0 ? 0 : (redVotes / totalVotes) * 95;
+            let bluePercentage = totalVotes === 0 ? 0 : (blueVotes / totalVotes) * 95;
 
-            if (gmVotes > 0 && gmPercentage < 5) gmPercentage = 5;
-            if (ompedVotes > 0 && ompedPercentage < 5) ompedPercentage = 5;
+            if (redVotes > 0 && redPercentage < 5) redPercentage = 5;
+            if (blueVotes > 0 && bluePercentage < 5) bluePercentage = 5;
 
-            document.getElementById('bar-gm').style.height = gmPercentage + '%';
-            document.getElementById('bar-omped').style.height = ompedPercentage + '%';
+            document.getElementById('bar-red').style.height = redPercentage + '%';
+            document.getElementById('bar-blue').style.height = bluePercentage + '%';
         });
     </script>
 </body>
