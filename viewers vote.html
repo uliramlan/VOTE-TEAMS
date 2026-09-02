@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Vote: GM vs OMPED</title>
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; background-color: #111; }
+        .split-container { display: flex; height: 100vh; width: 100vw; flex-direction: row; transition: opacity 0.3s; }
+        .team-side { flex: 1; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: filter 0.2s ease-in-out; -webkit-tap-highlight-color: transparent; user-select: none; }
+        .team-side:hover { filter: brightness(1.15); }
+        .team-side img { max-width: 60%; max-height: 60%; object-fit: contain; transition: transform 0.1s; pointer-events: none; }
+        .team-side:active img { transform: scale(0.9); }
+        .team-gm { background-color: #1a1a2e; }
+        .team-omped { background-color: #f1faee; }
+        
+        /* Overlay banner when voting is closed */
+        #status-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85); color: white; display: flex;
+            flex-direction: column; justify-content: center; align-items: center;
+            font-size: 28px; z-index: 999; text-align: center; padding: 20px;
+        }
+        .hidden { display: none !important; }
+        #timer-text { font-size: 40px; color: #ffcc00; margin-top: 15px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div id="status-overlay">
+        <div id="status-message"> </div>
+        <div id="timer-text"></div>
+    </div>
+
+    <div class="split-container" id="voting-area">
+        <div class="team-side team-gm" onclick="castVote('gm')">
+            <img src="static/logo team/GM.png" alt="Team Game Master">
+        </div>
+        <div class="team-side team-omped" onclick="castVote('omped')">
+            <img src="static/logo team/OMPED.png" alt="Team Omped">
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const overlay = document.getElementById('status-overlay');
+        const statusMessage = document.getElementById('status-message');
+        const timerText = document.getElementById('timer-text');
+        
+        let countdownInterval = null;
+
+        socket.on('timerStatus', (data) => {
+            clearInterval(countdownInterval);
+
+            if (data.active) {
+                overlay.classList.add('hidden');
+                startCountdown(data.endTime);
+            } else {
+                overlay.classList.remove('hidden');
+                statusMessage.textContent = "Voting is currently closed.";
+                timerText.textContent = "";
+            }
+        });
+
+        socket.on('voteRejected', (msg) => {
+            alert(msg);
+        });
+
+        function castVote(teamKey) {
+            socket.emit('castVote', teamKey);
+            alert("Vote submitted successfully!");
+        }
+
+        function startCountdown(endTime) {
+            const updateTimer = () => {
+                const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
+                
+                if (remaining <= 0) {
+                    clearInterval(countdownInterval);
+                    overlay.classList.remove('hidden');
+                    statusMessage.textContent = "Voting has ended!";
+                    timerText.textContent = "";
+                    return;
+                }
+
+                const minutes = Math.floor(remaining / 60);
+                const seconds = remaining % 60;
+                timerText.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            };
+
+            updateTimer();
+            countdownInterval = setInterval(updateTimer, 1000);
+        }
+    </script>
+</body>
+</html>
