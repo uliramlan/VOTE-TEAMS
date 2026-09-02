@@ -11,9 +11,11 @@ const io = new Server(server);
 const DATA_FILE = path.join(__dirname, 'votes.json');
 const ADMIN_SECRET = 'supersecret123';
 
-// Timer configuration state only for stream viewers
 let streamVotingActive = false;
 let streamTimerEndTime = null;
+
+// Track which sockets/devices have already voted
+const streamVoters = new Set();
 
 function loadVotes() {
     try {
@@ -39,7 +41,6 @@ let votes = loadVotes();
 
 app.use('/static', express.static(path.join(__dirname, 'static')));
 
-// Routes
 app.get('/vote', (req, res) => {
     res.sendFile(path.join(__dirname, 'VOTE.html'));
 });
@@ -60,7 +61,6 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'VOTE.html'));
 });
 
-// Admin endpoints for the stream timer
 app.get('/start-timer', (req, res) => {
     if (req.query.key !== ADMIN_SECRET) {
         return res.status(403).send('Unauthorized: Invalid secret key.');
@@ -69,6 +69,9 @@ app.get('/start-timer', (req, res) => {
     const minutes = parseFloat(req.query.minutes) || 5;
     streamVotingActive = true;
     streamTimerEndTime = Date.now() + (minutes * 60 * 1000);
+    
+    // Clear previous voters list on a new timer session if desired, or keep it. Let's keep it safe.
+    streamVoters.clear();
 
     setTimeout(() => {
         streamVotingActive = false;
@@ -97,6 +100,7 @@ app.get('/reset', (req, res) => {
     }
 
     votes = { gm: 0, omped: 0 };
+    streamVoters.clear();
     saveVotes(votes);
     io.emit('updateVotes', votes);
 
@@ -107,7 +111,11 @@ io.on('connection', (socket) => {
     socket.emit('updateVotes', votes);
     socket.emit('streamTimerStatus', { active: streamVotingActive, endTime: streamTimerEndTime });
 
-    // Standard live event vote (Always allowed, no timer restriction)
+    // If this specific client already voted in this session, let their browser know immediately
+    if (streamVoters.has(socket.handshake.address)) {
+        socket.emit('alreadyVoted');
+    }
+
     socket.on('castVote', (team) => {
         if (team === 'gm') votes.gm++;
         if (team === 'omped') votes.omped++;
@@ -116,12 +124,19 @@ io.on('connection', (socket) => {
         io.emit('updateVotes', votes);
     });
 
-    // Stream viewer vote (Strictly checked against the timer)
     socket.on('castStreamVote', (team) => {
         if (!streamVotingActive) {
             socket.emit('voteRejected', 'Stream voting is currently closed.');
             return;
         }
+
+        // Server-side check to block duplicate votes from the same connection IP/session
+        if (streamVoters.has(socket.id)) {
+            socket.emit('voteRejected', 'You have already cast your stream vote!');
+            return;
+        }
+
+        streamVoters.add(socket.id);
 
         if (team === 'gm') votes.gm++;
         if (team === 'omped') votes.omped++;
