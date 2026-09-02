@@ -1,59 +1,26 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stream Viewer Vote: GM vs OMPED</title>
-    <style>
-        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; background-color: #111; }
-        .split-container { display: flex; height: 100vh; width: 100vw; flex-direction: row; transition: opacity 0.3s; }
-        .team-side { flex: 1; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: filter 0.2s ease-in-out; -webkit-tap-highlight-color: transparent; user-select: none; }
-        .team-side:hover { filter: brightness(1.15); }
-        .team-side img { max-width: 60%; max-height: 60%; object-fit: contain; transition: transform 0.1s; pointer-events: none; }
-        .team-side:active img { transform: scale(0.9); }
-        .team-gm { background-color: #1a1a2e; }
-        .team-omped { background-color: #f1faee; }
-        
-        #status-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.85); color: white; display: flex;
-            flex-direction: column; justify-content: center; align-items: center;
-            font-size: 28px; z-index: 999; text-align: center; padding: 20px;
-        }
-        .hidden { display: none !important; }
-        #timer-text { font-size: 40px; color: #ffcc00; margin-top: 15px; font-weight: bold; }
-    </style>
-</head>
-<body>
-
-    <div id="status-overlay">
-        <div id="status-message">Waiting for host to open stream voting...</div>
-        <div id="timer-text"></div>
-    </div>
-
-    <div class="split-container" id="voting-area">
-        <div class="team-side team-gm" onclick="castVote('gm')">
-            <img src="static/logo team/GM.png" alt="Team Game Master">
-        </div>
-        <div class="team-side team-omped" onclick="castVote('omped')">
-            <img src="static/logo team/OMPED.png" alt="Team Omped">
-        </div>
-    </div>
-
-    <script src="/socket.io/socket.io.js"></script>
+<script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
         const overlay = document.getElementById('status-overlay');
         const statusMessage = document.getElementById('status-message');
         const timerText = document.getElementById('timer-text');
+        const votingArea = document.getElementById('voting-area');
         
         let countdownInterval = null;
+
+        // Check if this device already voted previously
+        if (localStorage.getItem('has_stream_voted') === 'true') {
+            lockScreen("You have already voted from this device!");
+        }
 
         socket.on('streamTimerStatus', (data) => {
             clearInterval(countdownInterval);
 
             if (data.active) {
-                overlay.classList.add('hidden');
+                // Only remove overlay if they haven't already voted
+                if (localStorage.getItem('has_stream_voted') !== 'true') {
+                    overlay.classList.add('hidden');
+                }
                 startCountdown(data.endTime);
             } else {
                 overlay.classList.remove('hidden');
@@ -67,15 +34,30 @@
         });
 
         socket.on('voteSuccess', (msg) => {
+            localStorage.setItem('has_stream_voted', 'true');
+            lockScreen("Vote recorded successfully! Thank you.");
             alert(msg);
-            // Optional: lock screen after voting once if desired
         });
 
         function castVote(teamKey) {
+            if (localStorage.getItem('has_stream_voted') === 'true') {
+                alert("You can only vote once!");
+                return;
+            }
             socket.emit('castStreamVote', teamKey);
         }
 
+        function lockScreen(message) {
+            overlay.classList.remove('hidden');
+            statusMessage.textContent = message;
+            timerText.textContent = "";
+            votingArea.style.pointerEvents = 'none';
+            votingArea.style.opacity = '0.5';
+        }
+
         function startCountdown(endTime) {
+            if (localStorage.getItem('has_stream_voted') === 'true') return;
+
             const updateTimer = () => {
                 const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
                 
@@ -96,5 +78,3 @@
             countdownInterval = setInterval(updateTimer, 1000);
         }
     </script>
-</body>
-</html>
