@@ -59,11 +59,9 @@
             socket.emit('checkVoterToken', voterToken);
         });
 
+        // Automatically wipe browser lock when a new timer or reset is triggered
         socket.on('sessionReset', () => {
             localStorage.removeItem('has_voted');
-            overlay.classList.remove('hidden');
-            statusMessage.textContent = "New session started! Waiting for host to open voting...";
-            timerText.textContent = "";
         });
 
         socket.on('streamTimerStatus', (data) => {
@@ -109,7 +107,7 @@
             clearInterval(countdownInterval);
             overlay.classList.remove('hidden');
             statusMessage.textContent = message;
-            timerText.textContent = ""; // Clears countdown completely
+            timerText.textContent = "";
         }
 
         function startCountdown(endTime) {
