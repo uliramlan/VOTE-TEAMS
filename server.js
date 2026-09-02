@@ -67,6 +67,9 @@ app.get('/start-timer', (req, res) => {
     const minutes = parseFloat(req.query.minutes) || 5;
     streamVotingActive = true;
     streamTimerEndTime = Date.now() + (minutes * 60 * 1000);
+    
+    // Clear server-side memory so everyone can vote in this new timer window
+    streamVoters.clear();
 
     setTimeout(() => {
         streamVotingActive = false;
@@ -74,6 +77,8 @@ app.get('/start-timer', (req, res) => {
         io.emit('streamTimerStatus', { active: false });
     }, minutes * 60 * 1000);
 
+    // Tell all connected clients a new voting session/timer has started
+    io.emit('sessionReset');
     io.emit('streamTimerStatus', { active: true, endTime: streamTimerEndTime });
     res.send(`Stream voting window opened for ${minutes} minutes.`);
 });
@@ -95,11 +100,11 @@ app.get('/reset', (req, res) => {
     }
 
     votes = { red: 0, blue: 0 };
-    streamVoters.clear(); // Clears all tracked voter tokens on the server
+    streamVoters.clear();
     saveVotes(votes);
     
     io.emit('updateVotes', votes);
-    io.emit('sessionReset'); // Tells all open browsers to wipe their local vote locks
+    io.emit('sessionReset');
 
     res.send('Success! Votes have been reset to 0 and all voters unlocked.');
 });
