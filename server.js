@@ -1,27 +1,37 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Serve the static HTML and images from the 'public' folder
-app.use(express.static('public'));
+// Serve static assets (like your images in 'static/logo team/')
+app.use('/static', express.static(path.join(__dirname, 'static')));
 
-// Store votes in memory
+// Explicit routes for your HTML files
+app.get('/VOTE.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'VOTE.html'));
+});
+
+app.get('/results.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'results.html'));
+});
+
+// Optional: Redirect root to vote page
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'VOTE.html'));
+});
+
 let votes = { gm: 0, omped: 0 };
 
 io.on('connection', (socket) => {
-    // Send current vote count to anyone who connects (e.g., vMix browser)
     socket.emit('updateVotes', votes);
 
-    // Listen for incoming votes
     socket.on('castVote', (team) => {
         if (team === 'gm') votes.gm++;
         if (team === 'omped') votes.omped++;
-        
-        // Broadcast the new totals to everyone instantly
         io.emit('updateVotes', votes);
     });
 });
