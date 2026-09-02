@@ -10,7 +10,7 @@ const io = new Server(server);
 
 // Path to store votes persistently on the container's disk
 const DATA_FILE = path.join(__dirname, 'votes.json');
-const ADMIN_SECRET = 'supersecret123'; // Change this to your own password!
+const ADMIN_SECRET = 'satesirat12!'; // Change this to your own password!
 
 // Load existing votes from file or default to zero
 function loadVotes() {
