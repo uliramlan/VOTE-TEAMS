@@ -27,8 +27,8 @@
 
         // Listen for updates from the server
         socket.on('updateVotes', (votes) => {
-            let gmVotes = votes.gm;
-            let ompedVotes = votes.omped;
+            let gmVotes = votes.red;
+            let ompedVotes = votes.blue;
             let totalVotes = gmVotes + ompedVotes;
 
             let gmPercentage = totalVotes === 0 ? 0 : (gmVotes / totalVotes) * 95;
