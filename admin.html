@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Control Dashboard</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #f8fafc; text-align: center; padding: 40px; margin: 0; }
+        .card { max-width: 450px; margin: auto; background: #1e293b; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+        h2 { margin-bottom: 25px; color: #38bdf8; }
+        .group { margin-bottom: 20px; text-align: left; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; font-size: 14px; }
+        input, select { width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 16px; box-sizing: border-box; }
+        button { width: 100%; padding: 14px; font-size: 16px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; margin-top: 10px; color: white; transition: opacity 0.2s; }
+        button:hover { opacity: 0.9; }
+        .btn-start { background: #22c55e; }
+        .btn-stop { background: #eab308; }
+        .btn-reset { background: #ef4444; margin-top: 25px; }
+        #status { margin-top: 20px; font-size: 15px; font-weight: bold; color: #38bdf8; min-height: 24px; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h2>Voting Dashboard</h2>
+        
+        <div class="group">
+            <label for="secret">Admin Secret Key:</label>
+            <input type="password" id="secret" placeholder="Enter password...">
+        </div>
+
+        <div class="group">
+            <label for="minutes">Timer Duration:</label>
+            <select id="minutes">
+                <option value="1">1 Minute</option>
+                <option value="3">3 Minutes</option>
+                <option value="5" selected>5 Minutes</option>
+                <option value="10">10 Minutes</option>
+            </select>
+        </div>
+
+        <button class="btn-start" onclick="startTimer()">Start Timer Window</button>
+        <button class="btn-stop" onclick="stopTimer()">Stop Timer Early</button>
+        <button class="btn-reset" onclick="resetVotes()">Reset All Votes (0-0)</button>
+
+        <div id="status"></div>
+    </div>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+
+        async function sendCommand(endpoint) {
+            const secret = document.getElementById('secret').value;
+            const minutes = document.getElementById('minutes').value;
+
+            if (!secret) {
+                statusDiv.style.color = '#ef4444';
+                statusDiv.textContent = 'Please enter the admin secret key!';
+                return;
+            }
+
+            let url = `/${endpoint}?key=${encodeURIComponent(secret)}`;
+            if (endpoint === 'start-timer') {
+                url += `&minutes=${minutes}`;
+            }
+
+            try {
+                const response = await fetch(url);
+                const text = await response.text();
+                
+                if (response.ok) {
+                    statusDiv.style.color = '#22c55e';
+                    statusDiv.textContent = text;
+                } else {
+                    statusDiv.style.color = '#ef4444';
+                    statusDiv.textContent = text;
+                }
+            } catch (err) {
+                statusDiv.style.color = '#ef4444';
+                statusDiv.textContent = 'Connection error occurred.';
+            }
+        }
+
+        function startTimer() { sendCommand('start-timer'); }
+        function stopTimer() { sendCommand('stop-timer'); }
+        function resetVotes() {
+            if (confirm('Are you sure you want to wipe all current votes back to zero?')) {
+                sendCommand('reset');
+            }
+        }
+    </script>
+</body>
+</html>
