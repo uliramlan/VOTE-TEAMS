@@ -9,13 +9,10 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 const DATA_FILE = path.join(__dirname, 'votes.json');
-const ADMIN_SECRET = 'tessid123!'; // Change to your secure admin key
+const ADMIN_SECRET = 'supersecret123';
 
-// Timer state for stream viewers
 let streamVotingActive = false;
 let streamTimerEndTime = null;
-
-// Track unique voter tokens persistently in memory
 const streamVoters = new Set();
 
 function loadVotes() {
@@ -27,7 +24,7 @@ function loadVotes() {
     } catch (err) {
         console.error('Error reading vote file:', err);
     }
-    return { blue: 0, red: 0 };
+    return { red: 0, blue: 0 };
 }
 
 function saveVotes(votes) {
@@ -42,7 +39,6 @@ let votes = loadVotes();
 
 app.use('/static', express.static(path.join(__dirname, 'static')));
 
-// App Routes
 app.get('/vote', (req, res) => {
     res.sendFile(path.join(__dirname, 'VOTE.html'));
 });
@@ -63,7 +59,6 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'VOTE.html'));
 });
 
-// Admin Timer & Reset Endpoints
 app.get('/start-timer', (req, res) => {
     if (req.query.key !== ADMIN_SECRET) {
         return res.status(403).send('Unauthorized: Invalid secret key.');
@@ -99,7 +94,7 @@ app.get('/reset', (req, res) => {
         return res.status(403).send('Unauthorized: Invalid secret key.');
     }
 
-    votes = { gm: 0, omped: 0 };
+    votes = { red: 0, blue: 0 };
     streamVoters.clear();
     saveVotes(votes);
     io.emit('updateVotes', votes);
@@ -107,28 +102,24 @@ app.get('/reset', (req, res) => {
     res.send('Success! Votes have been reset to 0.');
 });
 
-// Socket.io Real-Time Handler
 io.on('connection', (socket) => {
     socket.emit('updateVotes', votes);
     socket.emit('streamTimerStatus', { active: streamVotingActive, endTime: streamTimerEndTime });
 
-    // Verify if connecting client's token has already voted
     socket.on('checkVoterToken', (token) => {
         if (token && streamVoters.has(token)) {
             socket.emit('alreadyVoted');
         }
     });
 
-    // Unrestricted in-person live event vote
     socket.on('castVote', (team) => {
-        if (team === 'gm') votes.gm++;
-        if (team === 'omped') votes.omped++;
+        if (team === 'red') votes.red++;
+        if (team === 'blue') votes.blue++;
         
         saveVotes(votes);
         io.emit('updateVotes', votes);
     });
 
-    // Time-restricted, single-vote stream viewer vote
     socket.on('castStreamVote', ({ team, token }) => {
         if (!streamVotingActive) {
             socket.emit('voteRejected', 'Stream voting is currently closed.');
@@ -143,8 +134,8 @@ io.on('connection', (socket) => {
 
         streamVoters.add(token);
 
-        if (team === 'gm') votes.gm++;
-        if (team === 'omped') votes.omped++;
+        if (team === 'red') votes.red++;
+        if (team === 'blue') votes.blue++;
         
         saveVotes(votes);
         io.emit('updateVotes', votes);
