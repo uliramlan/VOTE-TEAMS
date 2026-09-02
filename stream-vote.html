@@ -46,14 +46,28 @@
         const overlay = document.getElementById('status-overlay');
         const statusMessage = document.getElementById('status-message');
         const timerText = document.getElementById('timer-text');
-        const votingArea = document.getElementById('voting-area');
         
         let countdownInterval = null;
+
+        // Generate or fetch permanent local browser token
+        let voterToken = localStorage.getItem('stream_voter_token');
+        if (!voterToken) {
+            voterToken = 'token_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+            localStorage.setItem('stream_voter_token', voterToken);
+        }
+
+        socket.on('connect', () => {
+            socket.emit('checkVoterToken', voterToken);
+        });
 
         socket.on('streamTimerStatus', (data) => {
             clearInterval(countdownInterval);
 
             if (data.active) {
+                if (localStorage.getItem('has_voted') === 'true') {
+                    lockScreen("You have already cast your stream vote from this device!");
+                    return;
+                }
                 overlay.classList.add('hidden');
                 startCountdown(data.endTime);
             } else {
@@ -68,23 +82,33 @@
         });
 
         socket.on('voteSuccess', (msg) => {
-            overlay.classList.remove('hidden');
-            statusMessage.textContent = "Vote recorded successfully! Thank you.";
-            timerText.textContent = "";
+            localStorage.setItem('has_voted', 'true');
+            lockScreen("Vote recorded successfully! Thank you.");
             alert(msg);
         });
 
         socket.on('alreadyVoted', () => {
-            overlay.classList.remove('hidden');
-            statusMessage.textContent = "You have already cast your stream vote from this device!";
-            timerText.textContent = "";
+            localStorage.setItem('has_voted', 'true');
+            lockScreen("You have already cast your stream vote from this device!");
         });
 
         function castVote(teamKey) {
-            socket.emit('castStreamVote', teamKey);
+            if (localStorage.getItem('has_voted') === 'true') {
+                alert("You have already voted!");
+                return;
+            }
+            socket.emit('castStreamVote', { team: teamKey, token: voterToken });
+        }
+
+        function lockScreen(message) {
+            overlay.classList.remove('hidden');
+            statusMessage.textContent = message;
+            timerText.textContent = "";
         }
 
         function startCountdown(endTime) {
+            if (localStorage.getItem('has_voted') === 'true') return;
+
             const updateTimer = () => {
                 const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
                 
