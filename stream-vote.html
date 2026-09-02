@@ -59,7 +59,6 @@
             socket.emit('checkVoterToken', voterToken);
         });
 
-        // Listen for global session reset from admin to unlock local voting storage
         socket.on('sessionReset', () => {
             localStorage.removeItem('has_voted');
             overlay.classList.remove('hidden');
@@ -85,13 +84,12 @@
         });
 
         socket.on('voteRejected', (msg) => {
-            alert(msg);
+            lockScreen(msg);
         });
 
         socket.on('voteSuccess', (msg) => {
             localStorage.setItem('has_voted', 'true');
-            lockScreen("Vote recorded successfully! Thank you.");
-            alert(msg);
+            lockScreen("You have already cast your stream vote from this device!");
         });
 
         socket.on('alreadyVoted', () => {
@@ -101,20 +99,24 @@
 
         function castVote(teamKey) {
             if (localStorage.getItem('has_voted') === 'true') {
-                alert("You have already voted!");
+                lockScreen("You have already cast your stream vote from this device!");
                 return;
             }
             socket.emit('castStreamVote', { team: teamKey, token: voterToken });
         }
 
         function lockScreen(message) {
+            clearInterval(countdownInterval);
             overlay.classList.remove('hidden');
             statusMessage.textContent = message;
-            timerText.textContent = "";
+            timerText.textContent = ""; // Clears countdown completely
         }
 
         function startCountdown(endTime) {
-            if (localStorage.getItem('has_voted') === 'true') return;
+            if (localStorage.getItem('has_voted') === 'true') {
+                lockScreen("You have already cast your stream vote from this device!");
+                return;
+            }
 
             const updateTimer = () => {
                 const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
