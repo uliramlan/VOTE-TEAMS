@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Team Vote : VENUE</title>
-    <!-- Same CSS as before -->
     <style>
         body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; }
         .split-container { display: flex; height: 100vh; width: 100vw; flex-direction: row; }
@@ -12,18 +11,18 @@
         .team-side:hover { filter: brightness(1.15); }
         .team-side img { max-width: 60%; max-height: 60%; object-fit: contain; transition: transform 0.1s; pointer-events: none; }
         .team-side:active img { transform: scale(0.9); }
-        .team-gm { background-color: #1a1a2e; }
-        .team-omped { background-color: #f1faee; }
+        .team-red { background-color: #1a1a2e; }
+        .team-blue { background-color: #f1faee; }
         @media (max-width: 768px) { .split-container { flex-direction: column; } }
     </style>
 </head>
 <body>
     <div class="split-container">
-        <div class="team-side team-gm" onclick="castVote('red')">
-            <img src="static/logo team/GM.png" alt="Team1">
+        <div class="team-side team-red" onclick="castVote('red')">
+            <img src="static/logo team/GM.png" alt="Team Red">
         </div>
-        <div class="team-side team-omped" onclick="castVote('blue')">
-            <img src="static/logo team/OMPED.png" alt="Team2">
+        <div class="team-side team-blue" onclick="castVote('blue')">
+            <img src="static/logo team/OMPED.png" alt="Team Blue">
         </div>
     </div>
 
@@ -33,7 +32,6 @@
         const socket = io();
         
         function castVote(teamKey) {
-            // Send the vote to the server instead of Local Storage
             socket.emit('castVote', teamKey);
         }
     </script>
