@@ -27,7 +27,7 @@ function loadVotes() {
     } catch (err) {
         console.error('Error reading vote file:', err);
     }
-    return { gm: 0, omped: 0 };
+    return { blue: 0, red: 0 };
 }
 
 function saveVotes(votes) {
