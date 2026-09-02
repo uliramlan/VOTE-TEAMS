@@ -10,16 +10,16 @@ const io = new Server(server);
 // Serve static assets (like your images in 'static/logo team/')
 app.use('/static', express.static(path.join(__dirname, 'static')));
 
-// Explicit routes for your HTML files
-app.get('/VOTE.html', (req, res) => {
+// Clean routes without .html
+app.get('/vote', (req, res) => {
     res.sendFile(path.join(__dirname, 'VOTE.html'));
 });
 
-app.get('/results.html', (req, res) => {
+app.get('/results', (req, res) => {
     res.sendFile(path.join(__dirname, 'results.html'));
 });
 
-// Optional: Redirect root to vote page
+// Automatically send visitors to /vote when they visit the main link
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'VOTE.html'));
 });
