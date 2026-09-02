@@ -9,7 +9,7 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 const DATA_FILE = path.join(__dirname, 'votes.json');
-const ADMIN_SECRET = 'supersecret123'; // Change to your secure admin key
+const ADMIN_SECRET = 'tessid123!'; // Change to your secure admin key
 
 // Timer state for stream viewers
 let streamVotingActive = false;
