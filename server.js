@@ -95,11 +95,11 @@ app.get('/reset', (req, res) => {
     }
 
     votes = { red: 0, blue: 0 };
-    streamVoters.clear();
+    streamVoters.clear(); // Clears server memory lock so everyone can vote again
     saveVotes(votes);
     io.emit('updateVotes', votes);
 
-    res.send('Success! Votes have been reset to 0.');
+    res.send('Success! Votes have been reset to 0 and stream voters unlocked.');
 });
 
 io.on('connection', (socket) => {
