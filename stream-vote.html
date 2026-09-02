@@ -59,6 +59,14 @@
             socket.emit('checkVoterToken', voterToken);
         });
 
+        // Auto-unlock client storage when votes are reset to 0 by admin
+        socket.on('updateVotes', (votes) => {
+            let totalVotes = (votes.red || 0) + (votes.blue || 0);
+            if (totalVotes === 0) {
+                localStorage.removeItem('has_voted');
+            }
+        });
+
         socket.on('streamTimerStatus', (data) => {
             clearInterval(countdownInterval);
 
