@@ -9,13 +9,12 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 const DATA_FILE = path.join(__dirname, 'votes.json');
-const ADMIN_SECRET = 'satesirat12!'; // Change this password to your own secure key
+const ADMIN_SECRET = 'supersecret123';
 
-// Timer configuration state
-let votingActive = false;
-let timerEndTime = null;
+// Timer configuration state only for stream viewers
+let streamVotingActive = false;
+let streamTimerEndTime = null;
 
-// Load existing votes from file or default to zero
 function loadVotes() {
     try {
         if (fs.existsSync(DATA_FILE)) {
@@ -28,7 +27,6 @@ function loadVotes() {
     return { gm: 0, omped: 0 };
 }
 
-// Save votes to file
 function saveVotes(votes) {
     try {
         fs.writeFileSync(DATA_FILE, JSON.stringify(votes), 'utf8');
@@ -39,12 +37,11 @@ function saveVotes(votes) {
 
 let votes = loadVotes();
 
-// Serve static assets (such as team logos in 'static/logo team/')
 app.use('/static', express.static(path.join(__dirname, 'static')));
 
-// Clean HTML Route Mappings
+// Routes
 app.get('/vote', (req, res) => {
-    res.sendFile(path.join(__dirname, 'viewers vote.html'));
+    res.sendFile(path.join(__dirname, 'VOTE.html'));
 });
 
 app.get('/results', (req, res) => {
@@ -55,44 +52,45 @@ app.get('/admin', (req, res) => {
     res.sendFile(path.join(__dirname, 'admin.html'));
 });
 
+app.get('/stream-vote', (req, res) => {
+    res.sendFile(path.join(__dirname, 'stream-vote.html'));
+});
+
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'VOTE.html'));
 });
 
-// Admin endpoint to start voting window for X minutes
+// Admin endpoints for the stream timer
 app.get('/start-timer', (req, res) => {
     if (req.query.key !== ADMIN_SECRET) {
         return res.status(403).send('Unauthorized: Invalid secret key.');
     }
 
     const minutes = parseFloat(req.query.minutes) || 5;
-    votingActive = true;
-    timerEndTime = Date.now() + (minutes * 60 * 1000);
+    streamVotingActive = true;
+    streamTimerEndTime = Date.now() + (minutes * 60 * 1000);
 
-    // Automatically close voting when time runs out
     setTimeout(() => {
-        votingActive = false;
-        timerEndTime = null;
-        io.emit('timerStatus', { active: false });
+        streamVotingActive = false;
+        streamTimerEndTime = null;
+        io.emit('streamTimerStatus', { active: false });
     }, minutes * 60 * 1000);
 
-    io.emit('timerStatus', { active: true, endTime: timerEndTime });
-    res.send(`Voting window opened successfully for ${minutes} minutes.`);
+    io.emit('streamTimerStatus', { active: true, endTime: streamTimerEndTime });
+    res.send(`Stream voting window opened for ${minutes} minutes.`);
 });
 
-// Admin endpoint to manually close/stop voting early
 app.get('/stop-timer', (req, res) => {
     if (req.query.key !== ADMIN_SECRET) {
         return res.status(403).send('Unauthorized: Invalid secret key.');
     }
 
-    votingActive = false;
-    timerEndTime = null;
-    io.emit('timerStatus', { active: false });
-    res.send('Voting window closed manually.');
+    streamVotingActive = false;
+    streamTimerEndTime = null;
+    io.emit('streamTimerStatus', { active: false });
+    res.send('Stream voting window closed manually.');
 });
 
-// Admin endpoint to reset scoreboards
 app.get('/reset', (req, res) => {
     if (req.query.key !== ADMIN_SECRET) {
         return res.status(403).send('Unauthorized: Invalid secret key.');
@@ -105,15 +103,23 @@ app.get('/reset', (req, res) => {
     res.send('Success! Votes have been reset to 0.');
 });
 
-// Real-time Socket.io communication
 io.on('connection', (socket) => {
     socket.emit('updateVotes', votes);
-    socket.emit('timerStatus', { active: votingActive, endTime: timerEndTime });
+    socket.emit('streamTimerStatus', { active: streamVotingActive, endTime: streamTimerEndTime });
 
+    // Standard live event vote (Always allowed, no timer restriction)
     socket.on('castVote', (team) => {
-        // Enforce timer restriction on the server side
-        if (!votingActive) {
-            socket.emit('voteRejected', 'Voting is currently closed.');
+        if (team === 'gm') votes.gm++;
+        if (team === 'omped') votes.omped++;
+        
+        saveVotes(votes);
+        io.emit('updateVotes', votes);
+    });
+
+    // Stream viewer vote (Strictly checked against the timer)
+    socket.on('castStreamVote', (team) => {
+        if (!streamVotingActive) {
+            socket.emit('voteRejected', 'Stream voting is currently closed.');
             return;
         }
 
@@ -122,6 +128,7 @@ io.on('connection', (socket) => {
         
         saveVotes(votes);
         io.emit('updateVotes', votes);
+        socket.emit('voteSuccess', 'Stream vote recorded successfully!');
     });
 });
 
