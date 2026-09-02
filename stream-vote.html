@@ -65,7 +65,7 @@
 
             if (data.active) {
                 if (localStorage.getItem('has_voted') === 'true') {
-                    lockScreen("You have already cast your stream vote from this device!");
+                    lockScreen("Kamu sudah vote tim yang kamu pilih");
                     return;
                 }
                 overlay.classList.add('hidden');
@@ -89,7 +89,7 @@
 
         socket.on('alreadyVoted', () => {
             localStorage.setItem('has_voted', 'true');
-            lockScreen("You have already cast your stream vote from this device!");
+            lockScreen("Kamu sudah vote tim yang kamu pilih");
         });
 
         function castVote(teamKey) {
