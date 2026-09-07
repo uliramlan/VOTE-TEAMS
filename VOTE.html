@@ -26,10 +26,12 @@
         </div>
     </div>
 
-    <!-- Import Socket.IO -->
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io();
+        // Force direct WebSocket connection (bypasses HTTP polling overhead)
+        const socket = io({
+            transports: ['websocket']
+        });
         
         function castVote(teamKey) {
             socket.emit('castVote', teamKey);
