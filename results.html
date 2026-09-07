@@ -21,7 +21,10 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io();
+        // Force direct WebSocket connection (bypasses HTTP polling overhead)
+        const socket = io({
+            transports: ['websocket']
+        });
 
         socket.on('updateVotes', (votes) => {
             let redVotes = votes.red || 0;
