@@ -2,62 +2,58 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
-const fs = require('fs');
+const fs = require('fs').promises; // Non-blocking async filesystem operations
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+    cors: { origin: "*" },
+    transports: ['websocket', 'polling']
+});
 
 const DATA_FILE = path.join(__dirname, 'votes.json');
-const ADMIN_SECRET = 'supersecret123';
+const ADMIN_SECRET = 'supersecret123'; // Matches existing secret key
 
 let streamVotingActive = false;
 let streamTimerEndTime = null;
 const streamVoters = new Set();
+let votes = { red: 0, blue: 0 };
+let isDirty = false; // Flag to check if votes need to be written to disk
 
-function loadVotes() {
+// Load initial votes asynchronously at startup
+async function initVotes() {
     try {
-        if (fs.existsSync(DATA_FILE)) {
-            const data = fs.readFileSync(DATA_FILE, 'utf8');
-            return JSON.parse(data);
-        }
+        const data = await fs.readFile(DATA_FILE, 'utf8');
+        votes = JSON.parse(data);
     } catch (err) {
-        console.error('Error reading vote file:', err);
-    }
-    return { red: 0, blue: 0 };
-}
-
-function saveVotes(votes) {
-    try {
-        fs.writeFileSync(DATA_FILE, JSON.stringify(votes), 'utf8');
-    } catch (err) {
-        console.error('Error saving vote file:', err);
+        votes = { red: 0, blue: 0 };
     }
 }
+initVotes();
 
-let votes = loadVotes();
+// Periodic background file saver: Flushes RAM state to disk every 5 seconds
+// Eliminates sync thread freezing (fs.writeFileSync) entirely
+setInterval(async () => {
+    if (!isDirty) return;
+    try {
+        await fs.writeFile(DATA_FILE, JSON.stringify(votes), 'utf8');
+        isDirty = false;
+    } catch (err) {
+        console.error('Async disk write error:', err);
+    }
+}, 5000);
 
-app.use('/static', express.static(path.join(__dirname, 'static')));
+// Force browser caching for static assets (logos, css) to reduce server traffic
+app.use('/static', express.static(path.join(__dirname, 'static'), {
+    maxAge: '1d',
+    immutable: true
+}));
 
-app.get('/vote', (req, res) => {
-    res.sendFile(path.join(__dirname, 'VOTE.html'));
-});
-
-app.get('/results', (req, res) => {
-    res.sendFile(path.join(__dirname, 'results.html'));
-});
-
-app.get('/admin', (req, res) => {
-    res.sendFile(path.join(__dirname, 'admin.html'));
-});
-
-app.get('/stream-vote', (req, res) => {
-    res.sendFile(path.join(__dirname, 'stream-vote.html'));
-});
-
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'VOTE.html'));
-});
+app.get('/vote', (req, res) => res.sendFile(path.join(__dirname, 'VOTE.html')));
+app.get('/results', (req, res) => res.sendFile(path.join(__dirname, 'results.html')));
+app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
+app.get('/stream-vote', (req, res) => res.sendFile(path.join(__dirname, 'stream-vote.html')));
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'VOTE.html')));
 
 app.get('/start-timer', (req, res) => {
     if (req.query.key !== ADMIN_SECRET) {
@@ -68,7 +64,6 @@ app.get('/start-timer', (req, res) => {
     streamVotingActive = true;
     streamTimerEndTime = Date.now() + (minutes * 60 * 1000);
     
-    // Clear server-side memory so everyone can vote in this new timer window
     streamVoters.clear();
 
     setTimeout(() => {
@@ -77,7 +72,6 @@ app.get('/start-timer', (req, res) => {
         io.emit('streamTimerStatus', { active: false });
     }, minutes * 60 * 1000);
 
-    // Tell all connected clients a new voting session/timer has started
     io.emit('sessionReset');
     io.emit('streamTimerStatus', { active: true, endTime: streamTimerEndTime });
     res.send(`Stream voting window opened for ${minutes} minutes.`);
@@ -101,7 +95,7 @@ app.get('/reset', (req, res) => {
 
     votes = { red: 0, blue: 0 };
     streamVoters.clear();
-    saveVotes(votes);
+    isDirty = true;
     
     io.emit('updateVotes', votes);
     io.emit('sessionReset');
@@ -123,7 +117,7 @@ io.on('connection', (socket) => {
         if (team === 'red') votes.red++;
         if (team === 'blue') votes.blue++;
         
-        saveVotes(votes);
+        isDirty = true;
         io.emit('updateVotes', votes);
     });
 
@@ -144,7 +138,7 @@ io.on('connection', (socket) => {
         if (team === 'red') votes.red++;
         if (team === 'blue') votes.blue++;
         
-        saveVotes(votes);
+        isDirty = true;
         io.emit('updateVotes', votes);
         socket.emit('voteSuccess', 'Stream vote recorded successfully!');
     });
