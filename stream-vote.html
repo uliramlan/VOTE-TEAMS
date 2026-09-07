@@ -42,7 +42,11 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io();
+        // Force direct WebSocket connection (bypasses HTTP polling overhead)
+        const socket = io({
+            transports: ['websocket']
+        });
+        
         const overlay = document.getElementById('status-overlay');
         const statusMessage = document.getElementById('status-message');
         const timerText = document.getElementById('timer-text');
@@ -59,7 +63,6 @@
             socket.emit('checkVoterToken', voterToken);
         });
 
-        // Automatically wipe browser lock when a new timer or reset is triggered
         socket.on('sessionReset', () => {
             localStorage.removeItem('has_voted');
         });
